@@ -58,10 +58,77 @@ data/sources.md, data/DATA_DICTIONARY.md, requirements.txt, .gitignore, LICENSE 
 Awais Ahmed Shah), COLAB_RUN_SHEET.md, BUILD_LOG.md, 3 executed notebooks, 6 figures,
 model_metrics.csv, forecast_2026_2030.csv.
 
+## Stage 2 — PBS province panel + dashboard (25 Oct 2026, local staging only)
+
+### Stage 2A — PBS LFS 2024-25 panel: DONE and verified
+- **Source obtained:** the published PBS *Labour Force Survey 2024-25* Annual Report
+  (37th round, September 2025, 205 pages) was downloaded from pbs.gov.pk
+  (https://www.pbs.gov.pk/wp-content/uploads/2020/07/LFS-2024-25-Annual-Report.pdf,
+  retrieved 25 Oct 2026, SHA-256
+  79950b81ce4d738d48ff64f5e192f7905b112724a71b5d3018f4ff5991a57d48).
+  An earlier session's failure to read PBS pages was a site-shell problem, not an
+  absence of the report — the report PDF itself was directly retrievable.
+- **Verification (two independent reads):** every table value was read once from the
+  PDF text layer (pdftotext) and once from a rendered copy; the two reads agreed on
+  every cell used. Values are transcribed exactly as published, including rounding
+  quirks (rural Sindh female 2.5 < male 3.9 in Table 9.3; female Balochistan youth
+  unemployed shown as 0.0m in Table 8.7). Nothing estimated, nothing borrowed.
+- **Files added (124 data rows, each row carrying source report/table/URL):**
+  `data/pbs_lfs_province_2024_25.csv` (Table 9.2, 19th ICLS),
+  `data/pbs_lfs_province_region_2020_21_2024_25.csv` (Table 9.3, 13th ICLS),
+  `data/pbs_lfs_youth_province_2024_25.csv` (Table 8.7, youth 15-24 × province × sex),
+  `data/pbs_lfs_age_2024_25.csv` (Tables 9.4–9.6),
+  `data/pbs_lfs_education_2024_25.csv` (Tables 9.7–9.8),
+  `data/pbs_lfs_neet_2024_25.csv` (Table 8.8).
+- **Notebook 04** (`notebooks/04_pbs_province_panel.ipynb`, 16 cells, executed with
+  zero error outputs): integrity checks (no missing rates; spot-checks KP 9.6, KP
+  female 18.1, Pakistan 7.1, KP female youth 25.6, Intermediate 12.6; youth counts
+  consistent within 0.1m), gender gaps, youth-vs-all-ages ratios within the same
+  framework/year, 2020-21 → 2024-25 change (13th ICLS only), and figures
+  fig7_pbs_province_gender.png, fig8_pbs_youth_province.png, fig9_pbs_education.png
+  (fig8 visually inspected: KP female youth bar 25.6% renders correctly).
+- **Headline PBS findings:** KP worst overall (9.6%) and for youth (15.4%); survey
+  youth 12.8% = 1.80× survey all-ages 7.1% (19th ICLS, same survey/year — a different
+  method from the World Bank modelled 9.594%, never merged); KP female youth 25.6%
+  highest cell; Punjab youth the only female-below-male case (12.6% vs 13.1%);
+  education gradient rises with schooling (No Education 4.7% → Intermediate 12.6%)
+  with degree females 24.1% vs males 7.0%; NEET improved nationally 32.5% → 28.4%
+  but female NEET 45.4% vs male 13.0%.
+- **Honest limits recorded in notebook 04 and the report:** youth-by-province exists
+  only for 2024-25 (no published time series); no youth-by-education cross-tab is
+  published (education = all ages); 19th vs 13th ICLS kept separate; survey ≠ modelled.
+
+### Stage 2B — Interactive dashboard: DONE and verified
+- **Files added:** `dashboard/app.py` (trend, model comparison, outlook, PBS panel —
+  repo CSVs only), `dashboard/README.md`, `dashboard/requirements.txt`
+  (streamlit, pandas, matplotlib).
+- **Environment issue found and fixed honestly:** Streamlit's `st.dataframe`/`st.table`
+  require pyarrow, which requires NumPy 2, while this project's analysis venv uses
+  NumPy 1.26.4 (system scipy 1.11.4 is compiled for NumPy 1.x; upgrading NumPy to
+  2.5.4 broke sklearn imports, so the upgrade was reverted and the venv restored to
+  NumPy 1.26.4 with sklearn/statsmodels verified working again). Fix: tables render
+  as Markdown via a helper in `app.py` — no pyarrow, works in every environment.
+  This is documented in `app.py` itself.
+- **Verification:** (1) Streamlit AppTest executed the full script with zero
+  exceptions (12 markdown blocks rendered); (2) headless server started, main page
+  returned HTTP 200, server log contained zero tracebacks; (3) server stopped
+  cleanly afterwards (port 8501 closed, no stray processes).
+
+### Stage 2C — Docs and final verification
+- README.md: status "in progress" → "complete (Stage 1 + Stage 2)"; PBS panel and
+  dashboard documented; structure and run instructions updated.
+- report/research_report.md: status → complete; §3/§4 extended; new §5.4 (PBS panel);
+  limitation 5 rewritten to the panel's real limits; §7 next steps marked done;
+  full PBS citation (report, tables, URL, SHA-256) added to references.
+- Notebooks 01–03: existing executed outputs confirmed intact (outputs present,
+  no re-execution needed; the venv was restored to its stage-1 NumPy after the
+  dashboard experiment above).
+- **Not touched:** no GitHub login, no push, no browser window; `.venv/` remains
+  excluded by `.gitignore` and appears in no upload list. Staging only — the push
+  is a separate step requiring the owner's go-ahead and consent tap.
+
 ## What remains undone (and why)
-- **PBS detailed tables** (province / gender / education breakdowns): not yet added.
-  They were not reliably retrievable from the PBS website in this session; they must be
-  verified cell-by-cell against published PBS tables before inclusion (next stage).
-- **Dashboard:** listed as planned future work in the README/report; not built in this stage.
+- **Feature extension** (education-enrolment and sector indicators): future work only;
+  not required for completion, and no public series for it was verified in this stage.
 - **Pushing to GitHub:** intentionally not done here — staging only, per instructions.
   The `.venv/` folder is excluded via `.gitignore` and must not be committed.
