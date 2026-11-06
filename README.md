@@ -1,4 +1,5 @@
 # Forecasting Youth Unemployment in Pakistan
+**Live dashboard:** https://pakistan-youth-unemployment-forecasting.streamlit.app/
 
 **Final-Year Research Project — complete (Stage 1 + Stage 2)**
 Awais Ahmed Shah — BS Data Science (Final Year)
@@ -9,7 +10,8 @@ University of Engineering and Technology (UET) Peshawar, Pakistan
 Which factors most reliably drive youth unemployment in Pakistan, and can interpretable machine-learning models forecast youth unemployment trends accurately enough to be useful to students, universities, and policymakers?
 
 ## Why this matters
-Pakistan's overall unemployment rate was 7.1% in the Pakistan Bureau of Statistics (PBS) Labour Force Survey 2024-25, with young people and women facing substantially higher rates. Youth unemployment (ages 15-24, World Bank series) was 9.59% in 2025. Understanding which province, gender, education, and seasonal patterns drive these numbers is the first step to fixing them.
+Pakistan's overall unemployment rate was 7.1% in the Pakistan Bureau of Statistics (PBS) Labour Force Survey 2024-25, with young 
+people and women facing substantially higher rates. Youth unemployment (ages 15-24, World Bank series) was 9.59% in 2025. Understanding which province, gender, education, and seasonal patterns drive these numbers is the first step to fixing them.
 
 ## Background — this project builds on real prior work
 - My internship project, [CodeAlpha_Unemployment_Analysis](https://github.com/AwaisAhmed183/CodeAlpha_Unemployment_Analysis), analysed unemployment trends using Python (Pandas, NumPy, Matplotlib/Seaborn) — exploratory data analysis and visualisation on real unemployment datasets. Its stated future work was: apply machine-learning models for prediction and build an interactive dashboard. **This project is that future work, now applied to Pakistan.**
