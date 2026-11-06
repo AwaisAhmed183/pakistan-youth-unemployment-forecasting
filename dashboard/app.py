@@ -2,21 +2,25 @@
 
 Reads ONLY this repo's own CSVs (World Bank modelled series + published PBS
 LFS 2024-25 tables). No new data, no estimates, no external calls at runtime.
+Every chart is interactive (hover for values, drag to zoom) — no static pictures.
 
 Run from the repo root or from this folder:
-    pip install -r dashboard/requirements.txt   (or: pip install streamlit pandas matplotlib)
+    pip install -r dashboard/requirements.txt   (or: pip install streamlit pandas plotly)
     streamlit run dashboard/app.py
 """
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
-FIGSIZE = (10, 4.5)
+
+# Matplotlib's default colours, kept so the charts look the same as before.
+BLUE = "#1f77b4"
+ORANGE = "#ff7f0e"
+GREEN = "#2ca02c"
+
 
 def md_table(df):
     """Render a DataFrame as a Markdown table (no pyarrow dependency).
@@ -47,16 +51,20 @@ st.write(
 # ---------------------------------------------------------------- trend
 st.header("1. Youth unemployment trend, 1991–2025 (World Bank, modelled ILO)")
 wb = pd.read_csv(ROOT / "data" / "processed" / "pakistan_labour_indicators_1991_2025.csv")
-fig, ax = plt.subplots(figsize=FIGSIZE)
-ax.plot(wb["year"], wb["youth_unemployment_total"], label="Youth total (15-24)")
-ax.plot(wb["year"], wb["youth_unemployment_male"], label="Youth male")
-ax.plot(wb["year"], wb["youth_unemployment_female"], label="Youth female")
-ax.plot(wb["year"], wb["unemployment_total"], label="All-ages total", linestyle="--")
-ax.set_ylabel("Unemployment rate (%)")
-ax.set_title("Pakistan — unemployment, World Bank modelled ILO estimates")
-ax.legend()
-ax.grid(alpha=0.3)
-st.pyplot(fig)
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=wb["year"], y=wb["youth_unemployment_total"],
+                         mode="lines", name="Youth total (15-24)"))
+fig.add_trace(go.Scatter(x=wb["year"], y=wb["youth_unemployment_male"],
+                         mode="lines", name="Youth male"))
+fig.add_trace(go.Scatter(x=wb["year"], y=wb["youth_unemployment_female"],
+                         mode="lines", name="Youth female"))
+fig.add_trace(go.Scatter(x=wb["year"], y=wb["unemployment_total"],
+                         mode="lines", name="All-ages total",
+                         line=dict(dash="dash")))
+fig.update_layout(title="Pakistan — unemployment, World Bank modelled ILO estimates",
+                  yaxis_title="Unemployment rate (%)",
+                  hovermode="x unified")
+st.plotly_chart(fig, width="stretch")
 latest = wb.iloc[-1]
 st.write(
     f"Latest year in the series: **{int(latest['year'])}** — youth total "
@@ -69,13 +77,12 @@ st.write(
 st.header("2. Model comparison (test years 2016–2025, one-step-ahead)")
 metrics = pd.read_csv(ROOT / "results" / "model_metrics.csv")
 md_table(metrics)
-fig, ax = plt.subplots(figsize=FIGSIZE)
-m = metrics.sort_values("MAE")
-ax.barh(m["model"], m["MAE"])
-ax.set_xlabel("Test MAE (percentage points)")
-ax.set_title("Lower is better — Drift baseline beats every ML model on 35 annual points")
-ax.grid(axis="x", alpha=0.3)
-st.pyplot(fig)
+m = metrics.sort_values("MAE", ascending=False)
+fig = go.Figure()
+fig.add_trace(go.Bar(x=m["MAE"], y=m["model"], orientation="h", marker_color=BLUE))
+fig.update_layout(title="Lower is better — Drift baseline beats every ML model on 35 annual points",
+                  xaxis_title="Test MAE (percentage points)")
+st.plotly_chart(fig, width="stretch")
 st.write(
     "Honest result: the simple **Drift** baseline (MAE 0.886) beat ARIMA and both "
     "machine-learning models; Random Forest was worst (MAE 3.725). With only 35 annual "
@@ -85,14 +92,16 @@ st.write(
 # ---------------------------------------------------------------- outlook
 st.header("3. Outlook 2026–2030 (Drift baseline scenario)")
 fc = pd.read_csv(ROOT / "results" / "forecast_2026_2030.csv")
-fig, ax = plt.subplots(figsize=FIGSIZE)
-ax.plot(wb["year"], wb["youth_unemployment_total"], label="Observed (World Bank, modelled)")
-ax.plot(fc["year"], fc["forecast"], "r--", marker="o", label="Drift outlook 2026-2030")
-ax.set_ylabel("Youth unemployment rate (%)")
-ax.set_title("History and cautious 5-year outlook")
-ax.legend()
-ax.grid(alpha=0.3)
-st.pyplot(fig)
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=wb["year"], y=wb["youth_unemployment_total"],
+                         mode="lines", name="Observed (World Bank, modelled)"))
+fig.add_trace(go.Scatter(x=fc["year"], y=fc["forecast"],
+                         mode="lines+markers", name="Drift outlook 2026-2030",
+                         line=dict(color="red", dash="dash")))
+fig.update_layout(title="History and cautious 5-year outlook",
+                  yaxis_title="Youth unemployment rate (%)",
+                  hovermode="x unified")
+st.plotly_chart(fig, width="stretch")
 md_table(fc)
 st.warning(
     "Uncertainty note: this outlook is a baseline scenario under 'recent patterns continue'. "
@@ -111,38 +120,34 @@ prov = pd.read_csv(ROOT / "data" / "pbs_lfs_province_2024_25.csv")
 st.subheader("Unemployment by province and sex, all ages (19th ICLS)")
 md_table(prov[["province", "unemployment_total", "unemployment_male",
                    "unemployment_female"]])
-fig, ax = plt.subplots(figsize=FIGSIZE)
 provs = ["KP", "Punjab", "Sindh", "Balochistan"]
-x = range(len(provs))
-w = 0.25
 d = prov.set_index("province")
-for i, col in enumerate(["unemployment_total", "unemployment_male", "unemployment_female"]):
-    ax.bar([v + (i - 1) * w for v in x], [d.loc[p, col] for p in provs], w,
-           label=["Total", "Male", "Female"][i])
-ax.set_xticks(list(x))
-ax.set_xticklabels(provs)
-ax.set_ylabel("Unemployment rate (%)")
-ax.set_title("PBS LFS 2024-25 — by province and sex (19th ICLS)")
-ax.legend()
-ax.grid(axis="y", alpha=0.3)
-st.pyplot(fig)
+fig = go.Figure()
+for col, label, color in [("unemployment_total", "Total", BLUE),
+                          ("unemployment_male", "Male", ORANGE),
+                          ("unemployment_female", "Female", GREEN)]:
+    fig.add_trace(go.Bar(x=provs, y=[d.loc[p, col] for p in provs],
+                         name=label, marker_color=color))
+fig.update_layout(barmode="group",
+                  title="PBS LFS 2024-25 — by province and sex (19th ICLS)",
+                  yaxis_title="Unemployment rate (%)")
+st.plotly_chart(fig, width="stretch")
 
 youth = pd.read_csv(ROOT / "data" / "pbs_lfs_youth_province_2024_25.csv")
 st.subheader("Youth (15-24) unemployment by province and sex (19th ICLS)")
 yd = youth[youth["province"] != "Total"].pivot(index="province", columns="sex",
                                               values="unemployment_rate")
 md_table(yd)
-fig, ax = plt.subplots(figsize=FIGSIZE)
-for i, col in enumerate(["Total", "Male", "Female"]):
-    ax.bar([v + (i - 1) * w for v in x], [yd.loc[p, col] for p in provs], w, label=col)
-ax.axhline(12.8, color="red", linestyle="--", linewidth=1, label="Pakistan youth 12.8%")
-ax.set_xticks(list(x))
-ax.set_xticklabels(provs)
-ax.set_ylabel("Youth unemployment rate 15-24 (%)")
-ax.set_title("PBS LFS 2024-25 — youth (15-24) by province and sex (19th ICLS)")
-ax.legend()
-ax.grid(axis="y", alpha=0.3)
-st.pyplot(fig)
+fig = go.Figure()
+for col, color in [("Total", BLUE), ("Male", ORANGE), ("Female", GREEN)]:
+    fig.add_trace(go.Bar(x=provs, y=[yd.loc[p, col] for p in provs],
+                         name=col, marker_color=color))
+fig.add_hline(y=12.8, line_dash="dash", line_color="red",
+              annotation_text="Pakistan youth 12.8%")
+fig.update_layout(barmode="group",
+                  title="PBS LFS 2024-25 — youth (15-24) by province and sex (19th ICLS)",
+                  yaxis_title="Youth unemployment rate 15-24 (%)")
+st.plotly_chart(fig, width="stretch")
 st.write(
     "Headlines: KP youth 15.4% is highest; KP females aged 15-24 reach **25.6%**, the "
     "highest cell in the panel. Punjab is the only province where youth females (12.6%) "
